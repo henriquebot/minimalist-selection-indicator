@@ -1,0 +1,21 @@
+{
+  "id": "minimalist-selection-indicator",
+  "title": "Minimalist Selection Indicator",
+  "description": "Replaces Foundry VTT's default token selection/hover frame with a clean minimalist ring or corner brackets.",
+  "authors": [
+    {
+      "name": "henriquebot"
+    }
+  ],
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14.368"
+  },
+  "url": "https://github.com/henriquebot/minimalist-selection-indicator",
+  "manifest": "https://raw.githubusercontent.com/henriquebot/minimalist-selection-indicator/main/module.json",
+  "download": "https://github.com/henriquebot/minimalist-selection-indicator/archive/refs/heads/main.zip",
+  "esmodules": [
+    "scripts/minimalist-selection-indicator.js"
+  ]
+}
