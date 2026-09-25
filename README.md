@@ -6,8 +6,10 @@ A tiny, system-agnostic Foundry VTT v14 module that replaces the heavy square to
 
 - **Ring** selection indicator (default)
 - **Corner brackets** alternative
-- Separate selected and hover colors
+- Native Foundry **color pickers** for selected and hovered tokens
 - Adjustable thickness, opacity, and padding
+- **Apply Preview** button: test unsaved settings directly on the canvas without closing the settings window
+- English and Brazilian Portuguese localization, following Foundry's active language
 - Works with square, rectangular, and gridless tokens
 - No required dependencies
 - Uses **libWrapper** automatically if it is installed and active
@@ -40,6 +42,14 @@ Available settings:
 - Indicator padding
 - Selected token color
 - Hovered token color
+- Apply Preview
+
+Preview changes are temporary until **Save Changes** is used. Closing the settings window without saving restores the persisted appearance.
+
+## Languages
+
+- English
+- Português (Brasil)
 
 ## Why?
 
