@@ -7,7 +7,7 @@
       "name": "henriquebot"
     }
   ],
-  "version": "0.1.0",
+  "version": "0.2.0",
   "compatibility": {
     "minimum": "14",
     "verified": "14.368"
@@ -17,5 +17,20 @@
   "download": "https://github.com/henriquebot/minimalist-selection-indicator/archive/refs/heads/main.zip",
   "esmodules": [
     "scripts/minimalist-selection-indicator.js"
+  ],
+  "styles": [
+    "styles/minimalist-selection-indicator.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "pt-BR",
+      "name": "Português (Brasil)",
+      "path": "lang/pt-BR.json"
+    }
   ]
 }
