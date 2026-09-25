@@ -1,14 +1,30 @@
 const MODULE_ID = "minimalist-selection-indicator";
+const PREVIEW_KEYS = [
+  "style",
+  "thickness",
+  "opacity",
+  "padding",
+  "selectedColor",
+  "hoverColor"
+];
+
+const previewSettings = new Map();
+let previewActive = false;
 
 function setting(key) {
+  if (previewActive && previewSettings.has(key)) return previewSettings.get(key);
   return game.settings.get(MODULE_ID, key);
 }
 
-function parseHexColor(value, fallback = 0xFFFFFF) {
-  if (typeof value !== "string") return fallback;
-  const normalized = value.trim().replace(/^#/, "");
-  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return fallback;
-  return Number.parseInt(normalized, 16);
+function toColorInt(value, fallback = "#FFFFFF") {
+  for (const candidate of [value, fallback]) {
+    try {
+      return Number(foundry.utils.Color.from(candidate));
+    } catch (_err) {
+      // Try fallback.
+    }
+  }
+  return 0xFFFFFF;
 }
 
 function refreshAllTokens() {
@@ -83,35 +99,50 @@ function refreshBorderOverride() {
 
   // A subtle dark under-stroke keeps the indicator readable over bright maps
   // without recreating Foundry's heavy default selection box.
-  drawIndicator(border, this, style, lineWidth + Math.max(1, baseThickness * 0.65), 0x000000, opacity * 0.35, paddingPct);
+  drawIndicator(
+    border,
+    this,
+    style,
+    lineWidth + Math.max(1, baseThickness * 0.65),
+    0x000000,
+    opacity * 0.35,
+    paddingPct
+  );
   drawIndicator(border, this, style, lineWidth, 0xFFFFFF, opacity, paddingPct);
 }
 
 function getBorderColorOverride() {
   if (this.controlled) {
-    return parseHexColor(setting("selectedColor"), 0xD7F7FF);
+    return toColorInt(setting("selectedColor"), "#D7F7FF");
   }
-  return parseHexColor(setting("hoverColor"), 0xFFFFFF);
+  return toColorInt(setting("hoverColor"), "#FFFFFF");
 }
 
-Hooks.once("init", () => {
+function colorField(initial) {
+  const ColorField = foundry.data?.fields?.ColorField;
+  return ColorField
+    ? new ColorField({ required: true, nullable: false, initial })
+    : String;
+}
+
+function registerSettings() {
   game.settings.register(MODULE_ID, "style", {
-    name: "Indicator style",
-    hint: "Ring replaces the selection square with a thin ellipse. Corner brackets keep only four minimal corner marks.",
+    name: "MSI.Settings.Style.Name",
+    hint: "MSI.Settings.Style.Hint",
     scope: "world",
     config: true,
     type: String,
     choices: {
-      ring: "Ring",
-      corners: "Corner brackets"
+      ring: game.i18n.localize("MSI.Settings.Style.Ring"),
+      corners: game.i18n.localize("MSI.Settings.Style.Corners")
     },
     default: "ring",
     onChange: refreshAllTokens
   });
 
   game.settings.register(MODULE_ID, "thickness", {
-    name: "Line thickness",
-    hint: "Thickness relative to Foundry's normal token border.",
+    name: "MSI.Settings.Thickness.Name",
+    hint: "MSI.Settings.Thickness.Hint",
     scope: "world",
     config: true,
     type: Number,
@@ -125,8 +156,8 @@ Hooks.once("init", () => {
   });
 
   game.settings.register(MODULE_ID, "opacity", {
-    name: "Opacity",
-    hint: "Opacity of the selection indicator.",
+    name: "MSI.Settings.Opacity.Name",
+    hint: "MSI.Settings.Opacity.Hint",
     scope: "world",
     config: true,
     type: Number,
@@ -140,8 +171,8 @@ Hooks.once("init", () => {
   });
 
   game.settings.register(MODULE_ID, "padding", {
-    name: "Indicator padding",
-    hint: "Distance from the token edge as a percentage of the token's smallest dimension.",
+    name: "MSI.Settings.Padding.Name",
+    hint: "MSI.Settings.Padding.Hint",
     scope: "world",
     config: true,
     type: Number,
@@ -155,24 +186,87 @@ Hooks.once("init", () => {
   });
 
   game.settings.register(MODULE_ID, "selectedColor", {
-    name: "Selected token color",
-    hint: "Hex color used for a controlled token, for example #D7F7FF.",
+    name: "MSI.Settings.SelectedColor.Name",
+    hint: "MSI.Settings.SelectedColor.Hint",
     scope: "world",
     config: true,
-    type: String,
+    type: colorField("#D7F7FF"),
     default: "#D7F7FF",
     onChange: refreshAllTokens
   });
 
   game.settings.register(MODULE_ID, "hoverColor", {
-    name: "Hovered token color",
-    hint: "Hex color used while hovering a token, for example #FFFFFF.",
+    name: "MSI.Settings.HoverColor.Name",
+    hint: "MSI.Settings.HoverColor.Hint",
     scope: "world",
     config: true,
-    type: String,
+    type: colorField("#FFFFFF"),
     default: "#FFFFFF",
     onChange: refreshAllTokens
   });
+}
+
+function normalizeSettingsRoot(html) {
+  if (html instanceof HTMLElement) return html;
+  if (globalThis.jQuery && html instanceof jQuery) return html.get(0);
+  if (html?.[0] instanceof HTMLElement) return html[0];
+  return null;
+}
+
+function fieldValue(root, key) {
+  const field = root.querySelector(`[name="${MODULE_ID}.${key}"]`);
+  if (!field) return undefined;
+
+  const value = field.value;
+  if (["thickness", "opacity", "padding"].includes(key)) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : undefined;
+  }
+  return value;
+}
+
+function applyPreview(root) {
+  previewSettings.clear();
+
+  for (const key of PREVIEW_KEYS) {
+    const value = fieldValue(root, key);
+    if (value !== undefined) previewSettings.set(key, value);
+  }
+
+  previewActive = true;
+  refreshAllTokens();
+  ui.notifications.info(game.i18n.localize("MSI.Preview.Applied"));
+}
+
+function clearPreview() {
+  if (!previewActive) return;
+  previewActive = false;
+  previewSettings.clear();
+  refreshAllTokens();
+}
+
+function addPreviewButton(html) {
+  const root = normalizeSettingsRoot(html);
+  if (!root) return;
+
+  const lastField = root.querySelector(`[name="${MODULE_ID}.hoverColor"]`);
+  if (!lastField) return;
+
+  const lastGroup = lastField.closest(".form-group") ?? lastField.parentElement;
+  if (!lastGroup || lastGroup.parentElement?.querySelector(".msi-preview-button")) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "msi-preview-button";
+  button.innerHTML = `<i class="fa-solid fa-eye"></i> ${game.i18n.localize("MSI.Preview.Button")}`;
+  button.title = game.i18n.localize("MSI.Preview.Hint");
+  button.addEventListener("click", () => applyPreview(root));
+
+  lastGroup.insertAdjacentElement("afterend", button);
+}
+
+Hooks.once("init", () => {
+  registerSettings();
 });
 
 Hooks.once("setup", () => {
@@ -191,6 +285,16 @@ Hooks.once("setup", () => {
   TokenClass.prototype._refreshBorder = refreshBorderOverride;
   TokenClass.prototype._getBorderColor = getBorderColorOverride;
   console.log(`${MODULE_ID} | Initialized without libWrapper`);
+});
+
+Hooks.on("renderSettingsConfig", (_app, html) => {
+  addPreviewButton(html);
+});
+
+Hooks.on("closeSettingsConfig", () => {
+  // If the window is closed without saving, return the canvas to persisted values.
+  // If it was saved, persisted values are already the source of truth after this reset.
+  clearPreview();
 });
 
 Hooks.once("ready", refreshAllTokens);
