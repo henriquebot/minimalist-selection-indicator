@@ -21,18 +21,18 @@ function refreshAllTokens() {
   }
 }
 
-function drawRing(graphics, token, lineWidth, alpha, paddingPct) {
+function drawRing(graphics, token, lineWidth, color, alpha, paddingPct) {
   const pad = Math.min(token.w, token.h) * (paddingPct / 100);
   const cx = token.w / 2;
   const cy = token.h / 2;
   const rx = Math.max(1, (token.w / 2) + pad);
   const ry = Math.max(1, (token.h / 2) + pad);
 
-  graphics.lineStyle(lineWidth, 0xFFFFFF, alpha);
+  graphics.lineStyle(lineWidth, color, alpha);
   graphics.drawEllipse(cx, cy, rx, ry);
 }
 
-function drawCorners(graphics, token, lineWidth, alpha, paddingPct) {
+function drawCorners(graphics, token, lineWidth, color, alpha, paddingPct) {
   const pad = Math.min(token.w, token.h) * (paddingPct / 100);
   const left = -pad;
   const top = -pad;
@@ -40,7 +40,7 @@ function drawCorners(graphics, token, lineWidth, alpha, paddingPct) {
   const bottom = token.h + pad;
   const length = Math.max(8, Math.min(token.w, token.h) * 0.18);
 
-  graphics.lineStyle(lineWidth, 0xFFFFFF, alpha);
+  graphics.lineStyle(lineWidth, color, alpha);
 
   graphics.moveTo(left, top + length);
   graphics.lineTo(left, top);
@@ -59,11 +59,11 @@ function drawCorners(graphics, token, lineWidth, alpha, paddingPct) {
   graphics.lineTo(left, bottom - length);
 }
 
-function drawIndicator(graphics, token, style, lineWidth, alpha, paddingPct) {
+function drawIndicator(graphics, token, style, lineWidth, color, alpha, paddingPct) {
   if (style === "corners") {
-    drawCorners(graphics, token, lineWidth, alpha, paddingPct);
+    drawCorners(graphics, token, lineWidth, color, alpha, paddingPct);
   } else {
-    drawRing(graphics, token, lineWidth, alpha, paddingPct);
+    drawRing(graphics, token, lineWidth, color, alpha, paddingPct);
   }
 }
 
@@ -83,8 +83,8 @@ function refreshBorderOverride() {
 
   // A subtle dark under-stroke keeps the indicator readable over bright maps
   // without recreating Foundry's heavy default selection box.
-  drawIndicator(border, this, style, lineWidth + Math.max(1, baseThickness * 0.65), opacity * 0.35, paddingPct);
-  drawIndicator(border, this, style, lineWidth, opacity, paddingPct);
+  drawIndicator(border, this, style, lineWidth + Math.max(1, baseThickness * 0.65), 0x000000, opacity * 0.35, paddingPct);
+  drawIndicator(border, this, style, lineWidth, 0xFFFFFF, opacity, paddingPct);
 }
 
 function getBorderColorOverride() {
