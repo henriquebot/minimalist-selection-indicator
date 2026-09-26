@@ -5,7 +5,9 @@ const PREVIEW_KEYS = [
   "opacity",
   "padding",
   "selectedColor",
-  "hoverColor"
+  "hoverColor",
+  "glow",
+  "glowStrength"
 ];
 
 const previewSettings = new Map();
@@ -75,11 +77,45 @@ function drawCorners(graphics, token, lineWidth, color, alpha, paddingPct) {
   graphics.lineTo(left, bottom - length);
 }
 
+function drawOutline(graphics, token, lineWidth, color, alpha, paddingPct) {
+  const pad = Math.min(token.w, token.h) * (paddingPct / 100);
+  const left = -pad;
+  const top = -pad;
+  const width = Math.max(1, token.w + (pad * 2));
+  const height = Math.max(1, token.h + (pad * 2));
+
+  graphics.lineStyle(lineWidth, color, alpha);
+  graphics.drawRect(left, top, width, height);
+}
+
 function drawIndicator(graphics, token, style, lineWidth, color, alpha, paddingPct) {
   if (style === "corners") {
     drawCorners(graphics, token, lineWidth, color, alpha, paddingPct);
+  } else if (style === "outline") {
+    drawOutline(graphics, token, lineWidth, color, alpha, paddingPct);
   } else {
     drawRing(graphics, token, lineWidth, color, alpha, paddingPct);
+  }
+}
+
+function drawGlow(graphics, token, style, lineWidth, color, alpha, paddingPct, strength) {
+  const normalizedStrength = Math.max(0.25, Math.min(2, Number(strength) || 1));
+  const layers = [
+    { extra: 5.5 * normalizedStrength, alpha: 0.08 },
+    { extra: 3.25 * normalizedStrength, alpha: 0.13 },
+    { extra: 1.75 * normalizedStrength, alpha: 0.2 }
+  ];
+
+  for (const layer of layers) {
+    drawIndicator(
+      graphics,
+      token,
+      style,
+      lineWidth + layer.extra,
+      color,
+      Math.min(1, alpha * layer.alpha * normalizedStrength),
+      paddingPct
+    );
   }
 }
 
@@ -93,9 +129,23 @@ function refreshBorderOverride() {
   const thickness = setting("thickness");
   const opacity = setting("opacity");
   const paddingPct = setting("padding");
+  const color = this._getBorderColor();
 
   const baseThickness = Math.max(1, CONFIG.Canvas.objectBorderThickness ?? 4);
   const lineWidth = Math.max(1, baseThickness * thickness);
+
+  if (this.controlled && setting("glow")) {
+    drawGlow(
+      border,
+      this,
+      style,
+      lineWidth,
+      color,
+      opacity,
+      paddingPct,
+      setting("glowStrength")
+    );
+  }
 
   // A subtle dark under-stroke keeps the indicator readable over bright maps
   // without recreating Foundry's heavy default selection box.
@@ -108,7 +158,7 @@ function refreshBorderOverride() {
     opacity * 0.35,
     paddingPct
   );
-  drawIndicator(border, this, style, lineWidth, 0xFFFFFF, opacity, paddingPct);
+  drawIndicator(border, this, style, lineWidth, color, opacity, paddingPct);
 }
 
 function getBorderColorOverride() {
@@ -134,7 +184,8 @@ function registerSettings() {
     type: String,
     choices: {
       ring: game.i18n.localize("MSI.Settings.Style.Ring"),
-      corners: game.i18n.localize("MSI.Settings.Style.Corners")
+      corners: game.i18n.localize("MSI.Settings.Style.Corners"),
+      outline: game.i18n.localize("MSI.Settings.Style.Outline")
     },
     default: "ring",
     onChange: refreshAllTokens
@@ -204,6 +255,31 @@ function registerSettings() {
     default: "#FFFFFF",
     onChange: refreshAllTokens
   });
+
+  game.settings.register(MODULE_ID, "glow", {
+    name: "MSI.Settings.Glow.Name",
+    hint: "MSI.Settings.Glow.Hint",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: refreshAllTokens
+  });
+
+  game.settings.register(MODULE_ID, "glowStrength", {
+    name: "MSI.Settings.GlowStrength.Name",
+    hint: "MSI.Settings.GlowStrength.Hint",
+    scope: "world",
+    config: true,
+    type: Number,
+    range: {
+      min: 0.25,
+      max: 2,
+      step: 0.25
+    },
+    default: 1,
+    onChange: refreshAllTokens
+  });
 }
 
 function normalizeSettingsRoot(html) {
@@ -217,8 +293,10 @@ function fieldValue(root, key) {
   const field = root.querySelector(`[name="${MODULE_ID}.${key}"]`);
   if (!field) return undefined;
 
+  if (key === "glow") return Boolean(field.checked);
+
   const value = field.value;
-  if (["thickness", "opacity", "padding"].includes(key)) {
+  if (["thickness", "opacity", "padding", "glowStrength"].includes(key)) {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : undefined;
   }
@@ -249,7 +327,7 @@ function addPreviewButton(html) {
   const root = normalizeSettingsRoot(html);
   if (!root) return;
 
-  const lastField = root.querySelector(`[name="${MODULE_ID}.hoverColor"]`);
+  const lastField = root.querySelector(`[name="${MODULE_ID}.glowStrength"]`);
   if (!lastField) return;
 
   const lastGroup = lastField.closest(".form-group") ?? lastField.parentElement;
