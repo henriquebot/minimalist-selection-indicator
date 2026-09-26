@@ -1,24 +1,25 @@
 {
   "MSI.Settings.Style.Name": "Estilo do indicador",
-  "MSI.Settings.Style.Hint": "Escolha um anel fino, quatro cantos discretos ou um contorno de silhueta que segue a arte visível do token e ignora pixels transparentes.",
+  "MSI.Settings.Style.Hint": "Escolha um anel fino ou quatro cantos discretos no lugar do quadrado de seleção padrão do Foundry.",
   "MSI.Settings.Style.Ring": "Anel",
   "MSI.Settings.Style.Corners": "Cantos",
+
   "MSI.Settings.Thickness.Name": "Espessura da linha",
   "MSI.Settings.Thickness.Hint": "Espessura relativa à borda normal de token do Foundry.",
+
   "MSI.Settings.Opacity.Name": "Opacidade",
   "MSI.Settings.Opacity.Hint": "Opacidade do indicador de seleção.",
+
   "MSI.Settings.Padding.Name": "Distância do indicador",
-  "MSI.Settings.Padding.Hint": "Distância da borda do token em porcentagem da menor dimensão do token. Vale para Anel e Cantos; o contorno da silhueta segue a própria arte.",
+  "MSI.Settings.Padding.Hint": "Distância da borda do token em porcentagem da menor dimensão do token.",
+
   "MSI.Settings.SelectedColor.Name": "Cor do token selecionado",
   "MSI.Settings.SelectedColor.Hint": "Cor usada quando o token está selecionado.",
+
   "MSI.Settings.HoverColor.Name": "Cor ao passar o mouse",
   "MSI.Settings.HoverColor.Hint": "Cor usada quando o cursor está sobre o token.",
+
   "MSI.Preview.Button": "Aplicar prévia",
   "MSI.Preview.Hint": "Veja as configurações atuais no canvas sem salvar nem fechar esta janela.",
-  "MSI.Preview.Applied": "Prévia aplicada. Use Salvar alterações para manter estes valores.",
-  "MSI.Settings.Style.Outline": "Contorno da silhueta",
-  "MSI.Settings.Glow.Name": "Brilho neon",
-  "MSI.Settings.Glow.Hint": "Adiciona um brilho neon mais forte ao indicador tanto no token selecionado quanto ao passar o mouse.",
-  "MSI.Settings.GlowStrength.Name": "Intensidade do brilho",
-  "MSI.Settings.GlowStrength.Hint": "Controla a largura e a intensidade do efeito neon. Valores altos são propositalmente mais vivos."
+  "MSI.Preview.Applied": "Prévia aplicada. Use Salvar alterações para manter estes valores."
 }

@@ -1,13 +1,13 @@
 {
   "id": "minimalist-selection-indicator",
   "title": "Minimalist Selection Indicator",
-  "description": "Replaces Foundry VTT's default token selection/hover frame with a minimalist ring, corner brackets, or alpha-aware silhouette outline, with optional neon glow.",
+  "description": "Replaces Foundry VTT's default token selection/hover frame with a clean minimalist ring or corner brackets.",
   "authors": [
     {
       "name": "henriquebot"
     }
   ],
-  "version": "0.3.1",
+  "version": "0.2.0",
   "compatibility": {
     "minimum": "14",
     "verified": "14.368"

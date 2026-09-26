@@ -1,24 +1,25 @@
 {
   "MSI.Settings.Style.Name": "Indicator style",
-  "MSI.Settings.Style.Hint": "Choose a thin ring, four minimal corner marks, or a silhouette outline that follows the visible token artwork and ignores transparent pixels.",
+  "MSI.Settings.Style.Hint": "Choose a thin ring or four minimal corner marks instead of Foundry's default selection square.",
   "MSI.Settings.Style.Ring": "Ring",
   "MSI.Settings.Style.Corners": "Corner brackets",
+
   "MSI.Settings.Thickness.Name": "Line thickness",
   "MSI.Settings.Thickness.Hint": "Thickness relative to Foundry's normal token border.",
+
   "MSI.Settings.Opacity.Name": "Opacity",
   "MSI.Settings.Opacity.Hint": "Opacity of the selection indicator.",
+
   "MSI.Settings.Padding.Name": "Indicator padding",
-  "MSI.Settings.Padding.Hint": "Distance from the token edge as a percentage of the token's smallest dimension. Applies to Ring and Corner brackets; silhouette outline follows the artwork itself.",
+  "MSI.Settings.Padding.Hint": "Distance from the token edge as a percentage of the token's smallest dimension.",
+
   "MSI.Settings.SelectedColor.Name": "Selected token color",
   "MSI.Settings.SelectedColor.Hint": "Color used for a controlled token.",
+
   "MSI.Settings.HoverColor.Name": "Hovered token color",
   "MSI.Settings.HoverColor.Hint": "Color used while hovering a token.",
+
   "MSI.Preview.Button": "Apply preview",
   "MSI.Preview.Hint": "Preview the current values on the canvas without saving or closing this window.",
-  "MSI.Preview.Applied": "Preview applied. Use Save Changes to keep these values.",
-  "MSI.Settings.Style.Outline": "Silhouette outline",
-  "MSI.Settings.Glow.Name": "Neon glow",
-  "MSI.Settings.Glow.Hint": "Adds a stronger neon glow around the indicator for both selected and hovered tokens.",
-  "MSI.Settings.GlowStrength.Name": "Glow intensity",
-  "MSI.Settings.GlowStrength.Hint": "Controls how wide and bright the neon glow appears. Higher values are intentionally vivid."
+  "MSI.Preview.Applied": "Preview applied. Use Save Changes to keep these values."
 }
