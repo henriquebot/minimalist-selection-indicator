@@ -6,8 +6,8 @@ A tiny, system-agnostic Foundry VTT v14 module that replaces the heavy square to
 
 - **Ring** selection indicator (default)
 - **Corner brackets** alternative
-- **Outline** alternative that follows the token bounds
-- Optional **neon glow** for selected tokens, with adjustable intensity
+- **Silhouette outline** that follows the visible token artwork and ignores transparent pixels
+- Optional **neon glow** for both selected and hovered tokens, with adjustable intensity
 - Native Foundry **color pickers** for selected and hovered tokens
 - Adjustable thickness, opacity, and padding
 - **Apply Preview** button: test unsaved settings directly on the canvas without closing the settings window
@@ -38,7 +38,7 @@ Open **Game Settings → Configure Settings → Module Settings**.
 
 Available settings:
 
-- Indicator style: Ring / Corner brackets / Outline
+- Indicator style: Ring / Corner brackets / Silhouette outline
 - Neon glow on/off
 - Glow intensity
 - Line thickness

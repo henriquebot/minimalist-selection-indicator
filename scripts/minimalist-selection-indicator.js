@@ -11,6 +11,7 @@ const PREVIEW_KEYS = [
 ];
 
 const previewSettings = new Map();
+const textureFilterState = new WeakMap();
 let previewActive = false;
 
 function setting(key) {
@@ -36,6 +37,8 @@ function refreshAllTokens() {
       refreshBorder: true,
       refreshState: true
     });
+    if (setting("style") === "outline") syncTextureFilters(token);
+    else removeTextureFilters(token);
   }
 }
 
@@ -77,33 +80,21 @@ function drawCorners(graphics, token, lineWidth, color, alpha, paddingPct) {
   graphics.lineTo(left, bottom - length);
 }
 
-function drawOutline(graphics, token, lineWidth, color, alpha, paddingPct) {
-  const pad = Math.min(token.w, token.h) * (paddingPct / 100);
-  const left = -pad;
-  const top = -pad;
-  const width = Math.max(1, token.w + (pad * 2));
-  const height = Math.max(1, token.h + (pad * 2));
-
-  graphics.lineStyle(lineWidth, color, alpha);
-  graphics.drawRect(left, top, width, height);
-}
-
 function drawIndicator(graphics, token, style, lineWidth, color, alpha, paddingPct) {
   if (style === "corners") {
     drawCorners(graphics, token, lineWidth, color, alpha, paddingPct);
-  } else if (style === "outline") {
-    drawOutline(graphics, token, lineWidth, color, alpha, paddingPct);
   } else {
     drawRing(graphics, token, lineWidth, color, alpha, paddingPct);
   }
 }
 
 function drawGlow(graphics, token, style, lineWidth, color, alpha, paddingPct, strength) {
-  const normalizedStrength = Math.max(0.25, Math.min(2, Number(strength) || 1));
+  const normalizedStrength = Math.max(0.25, Math.min(3, Number(strength) || 1));
   const layers = [
-    { extra: 5.5 * normalizedStrength, alpha: 0.08 },
-    { extra: 3.25 * normalizedStrength, alpha: 0.13 },
-    { extra: 1.75 * normalizedStrength, alpha: 0.2 }
+    { extra: 12 * normalizedStrength, alpha: 0.10 },
+    { extra: 8 * normalizedStrength, alpha: 0.18 },
+    { extra: 5 * normalizedStrength, alpha: 0.28 },
+    { extra: 2.5 * normalizedStrength, alpha: 0.50 }
   ];
 
   for (const layer of layers) {
@@ -113,28 +104,176 @@ function drawGlow(graphics, token, style, lineWidth, color, alpha, paddingPct, s
       style,
       lineWidth + layer.extra,
       color,
-      Math.min(1, alpha * layer.alpha * normalizedStrength),
+      Math.min(1, alpha * layer.alpha * Math.min(1.5, normalizedStrength)),
       paddingPct
     );
   }
+}
+
+function isIndicatorActive(token) {
+  return Boolean(token?.controlled || token?.hover || token?.layer?.highlightObjects);
+}
+
+function indicatorColor(token) {
+  // Selection always wins over hover. Keeping this decision local avoids Foundry's
+  // disposition/hover border logic bleeding a second color into our indicator.
+  return token?.controlled
+    ? toColorInt(setting("selectedColor"), "#D7F7FF")
+    : toColorInt(setting("hoverColor"), "#FFFFFF");
+}
+
+function colorToRgba(color, alpha = 1) {
+  const value = Number(color) >>> 0;
+  return [
+    ((value >> 16) & 0xFF) / 255,
+    ((value >> 8) & 0xFF) / 255,
+    (value & 0xFF) / 255,
+    Math.max(0, Math.min(1, Number(alpha) || 0))
+  ];
+}
+
+function stripMsiFilters(mesh) {
+  if (!mesh || mesh.destroyed || !mesh.filters?.length) return;
+  const remaining = mesh.filters.filter((filter) => !filter?._msiSelectionFilter);
+  mesh.filters = remaining.length ? remaining : null;
+}
+
+function removeTextureFilters(token, { destroy = true } = {}) {
+  const owned = textureFilterState.get(token);
+  const meshes = new Set([owned?.mesh, token?.mesh].filter(Boolean));
+
+  for (const mesh of meshes) {
+    try {
+      stripMsiFilters(mesh);
+    } catch (_err) {
+      // The token may be tearing down or swapping meshes.
+    }
+  }
+
+  if (destroy && owned?.filters) {
+    for (const filter of owned.filters) {
+      try {
+        filter?.destroy?.();
+      } catch (_err) {
+        // Best-effort GPU cleanup.
+      }
+    }
+  }
+
+  textureFilterState.delete(token);
+}
+
+function syncTextureFilters(token) {
+  const mesh = token?.mesh;
+  const active = Boolean(
+    mesh &&
+    !mesh.destroyed &&
+    token.visible &&
+    token.renderable !== false &&
+    isIndicatorActive(token) &&
+    setting("style") === "outline"
+  );
+
+  if (!active) {
+    removeTextureFilters(token);
+    return;
+  }
+
+  const color = indicatorColor(token);
+  const opacity = Math.max(0, Math.min(1, Number(setting("opacity")) || 0));
+  const thickness = Math.max(0.25, Number(setting("thickness")) || 0.5);
+  const baseThickness = Math.max(1, CONFIG.Canvas.objectBorderThickness ?? 4);
+  const lineWidth = Math.max(1, baseThickness * thickness);
+  const glowEnabled = Boolean(setting("glow"));
+  const glowStrength = Math.max(0.25, Math.min(3, Number(setting("glowStrength")) || 1));
+  const state = token.controlled ? "selected" : "hover";
+  const signature = [
+    state,
+    color,
+    opacity,
+    lineWidth,
+    glowEnabled,
+    glowStrength
+  ].join("|");
+
+  const owned = textureFilterState.get(token);
+  if (owned?.mesh === mesh && owned.signature === signature) return;
+
+  removeTextureFilters(token);
+
+  const FilterNamespace = foundry.canvas?.rendering?.filters;
+  const OutlineFilter = FilterNamespace?.OutlineOverlayFilter;
+  const GlowFilter = FilterNamespace?.GlowOverlayFilter;
+
+  if (!OutlineFilter?.create) {
+    console.warn(MODULE_ID + " | OutlineOverlayFilter is unavailable; silhouette outline skipped.");
+    return;
+  }
+
+  const filters = [];
+  const outline = OutlineFilter.create({
+    outlineColor: colorToRgba(color, opacity),
+    knockout: false,
+    wave: false
+  });
+  outline._msiSelectionFilter = true;
+  outline.animated = false;
+  outline.thickness = lineWidth;
+  outline.padding = Math.max(Number(outline.padding) || 0, Math.ceil(lineWidth * 2 + 4));
+  filters.push(outline);
+
+  if (glowEnabled && GlowFilter?.create) {
+    const distance = Math.round(10 + (glowStrength * 10));
+    const glow = GlowFilter.create({
+      glowColor: colorToRgba(color, 1),
+      distance,
+      quality: 0.12,
+      knockout: false,
+      alpha: opacity
+    });
+    glow._msiSelectionFilter = true;
+    glow.animated = false;
+    glow.outerStrength = 3 + (glowStrength * 4);
+    glow.innerStrength = 0.5 + (glowStrength * 0.75);
+    glow.padding = Math.max(Number(glow.padding) || 0, distance + 8);
+    filters.push(glow);
+  }
+
+  const existing = (mesh.filters ?? []).filter((filter) => !filter?._msiSelectionFilter);
+  mesh.filters = [...existing, ...filters];
+  textureFilterState.set(token, { mesh, filters, signature });
 }
 
 function refreshBorderOverride() {
   const border = this.border;
   border.clear();
 
-  if (!this.visible) return;
+  if (!this.visible || !isIndicatorActive(this)) {
+    removeTextureFilters(this);
+    return;
+  }
 
   const style = setting("style");
+
+  // Silhouette mode belongs on the token mesh itself. Foundry's outline/glow filters
+  // sample texture alpha, so transparent pixels are ignored and the effect hugs the art.
+  if (style === "outline") {
+    syncTextureFilters(this);
+    return;
+  }
+
+  removeTextureFilters(this);
+
   const thickness = setting("thickness");
   const opacity = setting("opacity");
   const paddingPct = setting("padding");
-  const color = this._getBorderColor();
+  const color = indicatorColor(this);
 
   const baseThickness = Math.max(1, CONFIG.Canvas.objectBorderThickness ?? 4);
   const lineWidth = Math.max(1, baseThickness * thickness);
 
-  if (this.controlled && setting("glow")) {
+  // Glow applies to both selected and hovered tokens, using exactly the same state color.
+  if (setting("glow")) {
     drawGlow(
       border,
       this,
@@ -159,13 +298,6 @@ function refreshBorderOverride() {
     paddingPct
   );
   drawIndicator(border, this, style, lineWidth, color, opacity, paddingPct);
-}
-
-function getBorderColorOverride() {
-  if (this.controlled) {
-    return toColorInt(setting("selectedColor"), "#D7F7FF");
-  }
-  return toColorInt(setting("hoverColor"), "#FFFFFF");
 }
 
 function colorField(initial) {
@@ -274,7 +406,7 @@ function registerSettings() {
     type: Number,
     range: {
       min: 0.25,
-      max: 2,
+      max: 3,
       step: 0.25
     },
     default: 1,
@@ -352,7 +484,6 @@ Hooks.once("setup", () => {
 
   if (libWrapperActive) {
     libWrapper.register(MODULE_ID, "Token.prototype._refreshBorder", refreshBorderOverride, "OVERRIDE");
-    libWrapper.register(MODULE_ID, "Token.prototype._getBorderColor", getBorderColorOverride, "OVERRIDE");
     console.log(`${MODULE_ID} | Initialized with libWrapper`);
     return;
   }
@@ -361,7 +492,6 @@ Hooks.once("setup", () => {
   // interoperability; otherwise a small direct override keeps the module standalone.
   const TokenClass = CONFIG.Token.objectClass;
   TokenClass.prototype._refreshBorder = refreshBorderOverride;
-  TokenClass.prototype._getBorderColor = getBorderColorOverride;
   console.log(`${MODULE_ID} | Initialized without libWrapper`);
 });
 
@@ -373,6 +503,19 @@ Hooks.on("closeSettingsConfig", () => {
   // If the window is closed without saving, return the canvas to persisted values.
   // If it was saved, persisted values are already the source of truth after this reset.
   clearPreview();
+});
+
+Hooks.on("drawToken", (token) => {
+  if (setting("style") === "outline") syncTextureFilters(token);
+});
+
+Hooks.on("refreshToken", (token) => {
+  if (setting("style") === "outline") syncTextureFilters(token);
+  else removeTextureFilters(token);
+});
+
+Hooks.on("destroyToken", (token) => {
+  removeTextureFilters(token);
 });
 
 Hooks.once("ready", refreshAllTokens);
